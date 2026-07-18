@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+      Inheriting spring-boot-starter-parent at the root gives all child modules
+      Spring Boot's managed dependency versions for free — no version tags needed
+      on spring-boot-*, spring-kafka, flyway, jackson, etc.
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.ekalsi</groupId>
+    <artifactId>job-queue</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+
+    <!-- pom = this is an aggregator, not a deployable artifact -->
+    <packaging>pom</packaging>
+
+    <name>job-queue</name>
+    <description>Kafka-backed job queue engine — pluggable Spring Boot library</description>
+
+    <modules>
+        <module>job-queue-core</module>
+        <module>job-queue-spring</module>
+    </modules>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+
+</project>
