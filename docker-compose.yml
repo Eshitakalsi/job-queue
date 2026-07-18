@@ -1,0 +1,104 @@
+services:
+
+  # ─────────────────────────────────────────────
+  # POSTGRES
+  # Stores every job row + the outbox rows.
+  # This is the source of truth — Kafka only carries
+  # a tiny {job_id, job_type} notification pointer.
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16
+    container_name: job-queue-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"       # host:container — Spring Boot on your machine hits localhost:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data   # survive container restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────
+  # KAFKA  (KRaft mode — no ZooKeeper)
+  #
+  # KRaft = Kafka Raft — Kafka manages its own
+  # cluster metadata internally since v3.3.
+  # ZooKeeper is no longer needed.
+  #
+  # TWO LISTENERS — this is the most confusing part:
+  #
+  #   PLAINTEXT         kafka:29092   ← used inside the Docker network
+  #                                     (future: if we containerise the app too)
+  #   PLAINTEXT_HOST    localhost:9092 ← used by our Spring Boot app running
+  #                                     on your Mac, outside Docker
+  #
+  # Why two? Kafka advertises its own address to clients after the first
+  # connection. If it advertised "kafka:29092" to our Spring Boot app,
+  # the app would try to reconnect to "kafka" — a hostname that only
+  # exists inside Docker, not on your Mac. So we tell Kafka:
+  #   "when a client connects from outside Docker, advertise localhost:9092"
+  # ─────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    container_name: job-queue-kafka
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "9092:9092"       # exposes the PLAINTEXT_HOST listener to your Mac
+    environment:
+      # KRaft: this node is both a broker AND the controller (single-node dev setup)
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+
+      # Listeners — what addresses Kafka binds to inside the container
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092
+
+      # Advertised listeners — what Kafka tells clients to connect to
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+
+      # Map each listener name to a security protocol (PLAINTEXT = no auth/TLS)
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+
+      # Which listener brokers use to talk to each other
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # Which listener the KRaft controller uses
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      # KRaft quorum: node 1 is the controller, reachable at kafka:29093
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+
+      # Fixed cluster ID — must be a base64-encoded UUID, same value every restart
+      CLUSTER_ID: "q1Sh9aX2QgmLcg4NB5B1eA"
+
+      # ── topic defaults for a single-node dev cluster ──
+      # replication factor 1 = only one copy of each partition (fine for local)
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # Don't wait before electing a leader (speeds up local startup)
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+      # Let the engine create topics automatically when it first publishes
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s   # give Kafka time to elect a leader before health checks start
+
+volumes:
+  postgres-data:
+  kafka-data:

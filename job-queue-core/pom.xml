@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.ekalsi</groupId>
+        <artifactId>job-queue</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>job-queue-core</artifactId>
+    <name>job-queue-core</name>
+    <description>
+        Core domain model and interfaces — zero framework dependencies.
+        Any application (Spring, Quarkus, plain Java) can implement or consume these contracts.
+    </description>
+
+    <!--
+      Deliberately no dependencies.
+      Pure Java: records, interfaces, enums.
+      This is the contract that both the engine (job-queue-spring) and handler authors code against.
+    -->
+
+</project>
