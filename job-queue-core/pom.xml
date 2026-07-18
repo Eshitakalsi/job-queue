@@ -18,7 +18,7 @@
 
     <!--
       Deliberately no dependencies.
-      Pure Java 17: records, interfaces, enums.
+      Pure Java: records, interfaces, enums.
       This is the contract that both the engine (job-queue-spring) and handler authors code against.
     -->
 

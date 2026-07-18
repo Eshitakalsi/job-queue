@@ -13,7 +13,7 @@
     <name>job-queue-spring</name>
     <description>
         Spring Boot implementation of the job queue engine.
-        Wires the core interfaces to Postgres (JPA + Flyway), Kafka, and exposes REST endpoints.
+        Wires the core interfaces to Postgres (JPA), Kafka, and exposes REST endpoints.
     </description>
 
     <dependencies>
@@ -42,16 +42,6 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- DB schema migrations -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
-        </dependency>
-
         <!-- Kafka producer + consumer -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>
@@ -62,6 +52,11 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- Serializes Java 8+ date/time types (Instant, LocalDate) as ISO strings -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
 
         <!-- Health indicators, metrics -->
@@ -84,5 +79,17 @@
 
     </dependencies>
 
+    <build>
+        <plugins>
+            <!-- Lets us run the dev app with: ./mvnw spring-boot:run -pl job-queue-spring -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.ekalsi.jobqueue.JobQueueDevApp</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
