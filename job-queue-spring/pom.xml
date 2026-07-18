@@ -84,14 +84,5 @@
 
     </dependencies>
 
-    <build>
-        <plugins>
-            <!-- Produces the runnable fat JAR for the sample / dev server -->
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
 
 </project>
