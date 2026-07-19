@@ -1,0 +1,17 @@
+{
+  "name": "job-outbox-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "jobqueue",
+    "database.password": "jobqueue",
+    "database.dbname": "jobqueue",
+    "topic.prefix": "job-queue-db",
+    "table.include.list": "public.job_outbox",
+    "plugin.name": "pgoutput",
+    "slot.name": "job_outbox_slot",
+    "publication.name": "job_outbox_pub",
+    "heartbeat.interval.ms": "5000"
+  }
+}

@@ -58,4 +58,25 @@
 
     </dependencies>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                    <mainClass>com.ekalsi.jobqueue.JobQueueTestApp</mainClass>
+                    <useTestClasspath>true</useTestClasspath>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>test-run</id>
+                        <goals><goal>test-run</goal></goals>
+                        <configuration><skip>false</skip></configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

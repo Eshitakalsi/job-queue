@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -73,6 +74,11 @@ public class JobLifecycleService {
         job.setLeaseExpiresAt(null);
         jobRepository.save(job);
         outboxRepository.save(JobOutboxEntity.of(job.getId(), job.getType()));
+    }
+
+    @Transactional
+    public void markOutboxPublished(List<UUID> ids) {
+        outboxRepository.markPublished(ids);
     }
 
     @Transactional

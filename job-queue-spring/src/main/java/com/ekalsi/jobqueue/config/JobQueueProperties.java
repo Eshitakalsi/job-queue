@@ -13,7 +13,7 @@ public record JobQueueProperties(
         KafkaProperties kafka,
 
         @DefaultValue
-        OutboxProperties outbox,
+        CdcProperties cdc,
 
         @DefaultValue
         LeaseProperties lease,
@@ -52,13 +52,10 @@ public record JobQueueProperties(
         }
     }
 
-    public record OutboxProperties(
+    public record CdcProperties(
 
-            @DefaultValue("1000")
-            long pollIntervalMs,
-
-            @DefaultValue("100")
-            int batchSize
+            @DefaultValue("job-queue-db.public.job_outbox")
+            String outboxTopic
 
     ) {}
 

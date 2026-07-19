@@ -1,48 +1,22 @@
 services:
-
-  # ─────────────────────────────────────────────
-  # POSTGRES
-  # Stores every job row + the outbox rows.
-  # This is the source of truth — Kafka only carries
-  # a tiny {job_id, job_type} notification pointer.
-  # ─────────────────────────────────────────────
   postgres:
     image: postgres:16
     container_name: job-queue-postgres
+    command: ["postgres", "-c", "wal_level=logical"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"       # host:container — Spring Boot on your machine hits localhost:5432
+      - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data   # survive container restarts
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # ─────────────────────────────────────────────
-  # KAFKA  (KRaft mode — no ZooKeeper)
-  #
-  # KRaft = Kafka Raft — Kafka manages its own
-  # cluster metadata internally since v3.3.
-  # ZooKeeper is no longer needed.
-  #
-  # TWO LISTENERS — this is the most confusing part:
-  #
-  #   PLAINTEXT         kafka:29092   ← used inside the Docker network
-  #                                     (future: if we containerise the app too)
-  #   PLAINTEXT_HOST    localhost:9092 ← used by our Spring Boot app running
-  #                                     on your Mac, outside Docker
-  #
-  # Why two? Kafka advertises its own address to clients after the first
-  # connection. If it advertised "kafka:29092" to our Spring Boot app,
-  # the app would try to reconnect to "kafka" — a hostname that only
-  # exists inside Docker, not on your Mac. So we tell Kafka:
-  #   "when a client connects from outside Docker, advertise localhost:9092"
-  # ─────────────────────────────────────────────
   kafka:
     image: confluentinc/cp-kafka:7.7.0
     container_name: job-queue-kafka
@@ -98,6 +72,51 @@ services:
       timeout: 10s
       retries: 10
       start_period: 30s   # give Kafka time to elect a leader before health checks start
+
+  kafka-connect:
+    image: quay.io/debezium/connect:2.7
+    container_name: job-queue-connect
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:29092
+      GROUP_ID: job-queue-connect-cluster
+      CONFIG_STORAGE_TOPIC: job-queue.connect.configs
+      OFFSET_STORAGE_TOPIC: job-queue.connect.offsets
+      STATUS_STORAGE_TOPIC: job-queue.connect.status
+      CONFIG_STORAGE_REPLICATION_FACTOR: "1"
+      OFFSET_STORAGE_REPLICATION_FACTOR: "1"
+      STATUS_STORAGE_REPLICATION_FACTOR: "1"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8083/connectors || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  connector-init:
+    image: curlimages/curl:8.5.0
+    container_name: job-queue-connector-init
+    depends_on:
+      kafka-connect:
+        condition: service_healthy
+    volumes:
+      - ./debezium:/debezium
+    entrypoint:
+      - curl
+      - -sf
+      - -X POST
+      - http://kafka-connect:8083/connectors
+      - -H
+      - "Content-Type: application/json"
+      - --data-binary
+      - "@/debezium/connector-config.json"
+    restart: "no"
 
 volumes:
   postgres-data:
