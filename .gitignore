@@ -33,3 +33,4 @@ build/
 .vscode/
 JOB-QUEUE-PRD.md
 .env
+debezium/connector-config.json
