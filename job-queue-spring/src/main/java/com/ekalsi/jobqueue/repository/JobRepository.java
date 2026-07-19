@@ -13,48 +13,24 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Spring Data JPA repository for JobEntity.
- *
- * Extending JpaRepository<JobEntity, UUID> gives us for free:
- *   save(), findById(), findAll(), delete(), count(), existsById() ...
- *
- * Spring reads the method names below and generates the SQL automatically.
- * The two @Query methods need custom JPQL because they do something
- * Spring can't derive from a method name alone.
- */
 public interface JobRepository extends JpaRepository<JobEntity, UUID> {
 
-    // ── Used by the list endpoint ─────────────────────────────────────────────
-
-    // Spring translates this to: SELECT * FROM jobs WHERE status = ?
     Page<JobEntity> findByStatus(JobStatus status, Pageable pageable);
-
-    // SELECT * FROM jobs WHERE type = ?
     Page<JobEntity> findByType(String type, Pageable pageable);
-
-    // SELECT * FROM jobs WHERE status = ? AND type = ?
     Page<JobEntity> findByStatusAndType(JobStatus status, String type, Pageable pageable);
 
-    // ── Atomic job claim — the core of mutual exclusion ──────────────────────
     /**
-     * A worker pod calls this when it picks up a Kafka message.
-     * The WHERE clause guards on status = PENDING, so only one pod can succeed.
-     *
-     * Returns: 1 if this pod won the claim, 0 if another pod got there first.
-     *
-     * This is JPQL (Java Persistence Query Language), not SQL —
-     * it references the entity class (JobEntity) and field names, not table/column names.
-     * Hibernate translates it to the correct SQL for the target DB.
+     * Atomically claims a job. WHERE status = PENDING ensures only one pod wins.
+     * Returns 1 on success, 0 if another worker already claimed it.
      */
     @Modifying
     @Query("""
             UPDATE JobEntity j
-               SET j.status        = com.ekalsi.jobqueue.JobStatus.IN_PROGRESS,
-                   j.leaseOwner    = :leaseOwner,
+               SET j.status         = com.ekalsi.jobqueue.JobStatus.IN_PROGRESS,
+                   j.leaseOwner     = :leaseOwner,
                    j.leaseExpiresAt = :leaseExpiresAt,
-                   j.startedAt     = :now,
-                   j.updatedAt     = :now
+                   j.startedAt      = :now,
+                   j.updatedAt      = :now
              WHERE j.id     = :id
                AND j.status = com.ekalsi.jobqueue.JobStatus.PENDING
             """)
@@ -63,11 +39,6 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
                  @Param("leaseExpiresAt") Instant leaseExpiresAt,
                  @Param("now") Instant now);
 
-    // ── Used by the stale-job reaper ─────────────────────────────────────────
-    /**
-     * Find all IN_PROGRESS jobs whose lease has expired.
-     * The reaper calls this periodically and re-queues everything it finds.
-     */
     @Query("""
             SELECT j FROM JobEntity j
              WHERE j.status = com.ekalsi.jobqueue.JobStatus.IN_PROGRESS
@@ -75,11 +46,7 @@ public interface JobRepository extends JpaRepository<JobEntity, UUID> {
             """)
     List<JobEntity> findExpiredLeases(@Param("now") Instant now);
 
-    // ── Used by the cancel endpoint ───────────────────────────────────────────
-    /**
-     * Atomically cancel a job — only succeeds if it is still PENDING.
-     * Returns 1 on success, 0 if the job was already picked up.
-     */
+    /** Returns 1 if cancelled, 0 if the job was no longer PENDING. */
     @Modifying
     @Query("""
             UPDATE JobEntity j

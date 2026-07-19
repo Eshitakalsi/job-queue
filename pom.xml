@@ -3,11 +3,6 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!--
-      Inheriting spring-boot-starter-parent at the root gives all child modules
-      Spring Boot's managed dependency versions for free — no version tags needed
-      on spring-boot-*, spring-kafka, flyway, jackson, etc.
-    -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
@@ -19,7 +14,6 @@
     <artifactId>job-queue</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 
-    <!-- pom = this is an aggregator, not a deployable artifact -->
     <packaging>pom</packaging>
 
     <name>job-queue</name>
