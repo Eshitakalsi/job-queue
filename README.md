@@ -144,7 +144,7 @@ For long-running handlers, call `ctx.renewLease()` periodically to prevent the s
 
 ---
 
-## 6. Use the API
+## 6. Usage
 
 Inject `JobQueueClient` to submit and manage jobs:
 
