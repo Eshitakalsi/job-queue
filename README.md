@@ -6,17 +6,20 @@ A Kafka-backed, Postgres-persisted job queue engine distributed as a Spring Boot
 
 ## How it works
 
+
 ```
 submit()
   └─ INSERT jobs + job_outbox (one DB transaction)
-       └─ OutboxPoller (every 1s)
-            └─ KafkaTemplate.send(job-queue.jobs)
-                 └─ @KafkaListener (JobWorker)
-                      └─ atomic UPDATE WHERE status = PENDING  ← mutual exclusion
-                           └─ JobHandler.handle(ctx)
-                                ├─ success  → COMPLETED
-                                ├─ failure, attempts < max → PENDING + new outbox row (retry)
-                                └─ failure, attempts = max → DEAD
+       └─ Postgres WAL → Debezium CDC
+            └─ job-queue-db.public.job_outbox (Kafka topic)
+                 └─ OutboxCdcListener
+                      └─ KafkaTemplate.send(job-queue.jobs)
+                           └─ @KafkaListener (JobWorker)
+                                └─ atomic UPDATE WHERE status = PENDING  ← mutual exclusion
+                                     └─ JobHandler.handle(ctx)
+                                          ├─ success  → COMPLETED
+                                          ├─ failure, attempts < max → PENDING + new outbox row (retry)
+                                          └─ failure, attempts = max → DEAD
 ```
 
 ---
